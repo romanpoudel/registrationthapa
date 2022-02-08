@@ -5,6 +5,7 @@ const port = process.env.PORT || 3000;
 require("./db/conn");
 const path = require("path");
 const hbs = require("hbs");
+const cookieParser=require('cookie-parser');
 
 const static_path = path.join(__dirname, "../public");
 const template_path = path.join(__dirname, "../templates/views");
@@ -17,6 +18,7 @@ const bcrypt = require("bcrypt");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 app.use(express.static(static_path));
 app.set("view engine", "hbs");
@@ -27,6 +29,10 @@ hbs.registerPartials(partials_path);
 app.get("/", (req, res) => {
   res.render("index");
 });
+app.get("/secret", (req, res) => {
+    console.log(`this is the secret ${req.cookies.jwt}`);
+    res.render("secret");
+  });
 
 app.get("/register", (req, res) => {
   res.render("register");
@@ -51,6 +57,11 @@ app.post("/register", async (req, res) => {
 
       const token = await registerEmployee.generateAuthToken();
       
+    //   cookies
+    res.cookie('jwt',token,{
+        expires:new Date(Date.now()+30000),
+        httpOnly:true
+    });
 
       const registered = await registerEmployee.save();
       res.status(201).redirect("/");
@@ -79,6 +90,12 @@ app.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, useremail.password);
 
     const token = await useremail.generateAuthToken();
+
+    res.cookie('jwt',token,{
+        expires:new Date(Date.now()+30000),
+        httpOnly:true,
+        // secure:true works only for https
+    });
    
     if (isMatch) {
       res.status(201).redirect("/");
